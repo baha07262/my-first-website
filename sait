@@ -1,0 +1,129 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import AddModal from './src/components/AddModal';
+import HomeHeader from './src/components/HomeHeader';
+import StatsView from './src/components/StatsView';
+import TxCard from './src/components/TxCard';
+import { ALL, C, SEED } from './src/constants';
+import { loadTxs, saveTxs } from './src/storage';
+import { KindFilter, SortMode, Tab, Tx } from './src/types';
+
+export default function App() {
+  const [txs, setTxs] = useState<Tx[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState<Tab>('home');
+  const [cat, setCat] = useState(ALL);
+  const [kind, setKind] = useState<KindFilter>('all');
+  const [sort, setSort] = useState<SortMode>('new');
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  // Қосымша ашылғанда сақталған жазбаларды оқу
+  useEffect(() => {
+    loadTxs().then((saved) => {
+      setTxs(saved ?? SEED);
+      setLoaded(true);
+    });
+  }, []);
+
+  // Әр өзгерістен кейін телефонға сақтау
+  useEffect(() => {
+    if (loaded) saveTxs(txs);
+  }, [txs, loaded]);
+
+  const income = useMemo(() => txs.filter((t) => t.kind === 'income').reduce((s, t) => s + t.amount, 0), [txs]);
+  const expense = useMemo(() => txs.filter((t) => t.kind === 'expense').reduce((s, t) => s + t.amount, 0), [txs]);
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = txs.filter(
+      (t) =>
+        (kind === 'all' || t.kind === kind) &&
+        (cat === ALL || t.category === cat) &&
+        (!q || t.note.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)),
+    );
+    return sort === 'amount' ? [...list].sort((a, b) => b.amount - a.amount) : list;
+  }, [txs, kind, cat, query, sort]);
+
+  const remove = (id: string) =>
+    Alert.alert('Жазбаны жою', 'Бұл жазбаны жойғыңыз келе ме?', [
+      { text: 'Болдырмау', style: 'cancel' },
+      { text: 'Жою', style: 'destructive', onPress: () => setTxs((p) => p.filter((t) => t.id !== id)) },
+    ]);
+
+  if (!loaded) return <View style={[s.root, { backgroundColor: C.dark }]} />;
+
+  return (
+    <View style={s.root}>
+      <StatusBar style="light" />
+
+      {tab === 'home' ? (
+        <FlatList
+          data={shown}
+          keyExtractor={(t) => t.id}
+          numColumns={2}
+          columnWrapperStyle={s.gridRow}
+          contentContainerStyle={{ paddingBottom: 110 }}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            <HomeHeader
+              income={income}
+              expense={expense}
+              query={query}
+              onQuery={setQuery}
+              cat={cat}
+              onCat={setCat}
+              kind={kind}
+              onKind={setKind}
+              sort={sort}
+              onSort={setSort}
+            />
+          }
+          ListEmptyComponent={<Text style={s.empty}>Жазба табылмады. Төмендегі «+» арқылы қосыңыз.</Text>}
+          renderItem={({ item }) => <TxCard item={item} onDelete={remove} />}
+        />
+      ) : (
+        <StatsView txs={txs} />
+      )}
+
+      <View style={s.nav}>
+        <Pressable style={s.navItem} onPress={() => setTab('home')}>
+          <Text style={[s.navIcon, tab !== 'home' && s.navOff]}>🏠</Text>
+          <View style={[s.navDot, tab === 'home' && s.navDotOn]} />
+        </Pressable>
+        <Pressable style={s.navAdd} onPress={() => setOpen(true)}>
+          <Text style={s.navAddText}>+</Text>
+        </Pressable>
+        <Pressable style={s.navItem} onPress={() => setTab('stats')}>
+          <Text style={[s.navIcon, tab !== 'stats' && s.navOff]}>📊</Text>
+          <View style={[s.navDot, tab === 'stats' && s.navDotOn]} />
+        </Pressable>
+      </View>
+
+      <AddModal
+        visible={open}
+        onClose={() => setOpen(false)}
+        onSave={(t) => {
+          setTxs((p) => [{ ...t, id: String(Date.now()) }, ...p]);
+          setOpen(false);
+        }}
+      />
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.bg },
+  gridRow: { justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 },
+  empty: { color: C.muted, textAlign: 'center', marginTop: 30, paddingHorizontal: 30, lineHeight: 22 },
+
+  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 92, backgroundColor: C.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingBottom: 18, borderTopLeftRadius: 24, borderTopRightRadius: 24, elevation: 12 },
+  navItem: { alignItems: 'center', width: 80 },
+  navIcon: { fontSize: 26 },
+  navOff: { opacity: 0.35 },
+  navDot: { width: 10, height: 5, borderRadius: 3, backgroundColor: 'transparent', marginTop: 6 },
+  navDotOn: { backgroundColor: C.latte },
+  navAdd: { width: 58, height: 58, borderRadius: 18, backgroundColor: C.latte, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  navAddText: { color: '#fff', fontSize: 32, marginTop: -2 },
+});

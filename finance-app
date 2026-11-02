@@ -1,0 +1,59 @@
+# 1Finance App
+
+## About the Project
+
+1Finance App is a mobile application project designed to help users manage their personal finances.
+
+## Features
+
+- Track personal finances: income and expenses with a total balance
+- Organize financial information: categories, search, filter by type, sort by amount
+- Statistics: expenses grouped by category
+- Data is saved on the device (AsyncStorage)
+- Simple and user-friendly interface (Coffee Shop style design)
+
+## Technologies Used
+
+- React Native
+- Expo
+- TypeScript
+- AsyncStorage
+
+## Project Structure
+
+```
+App.tsx                      app shell: state, filters, navigation
+src/types.ts                 shared types
+src/constants.ts             colors, categories, seed data
+src/utils.ts                 money formatting, category icons
+src/storage.ts               load/save transactions
+src/components/HomeHeader.tsx
+src/components/TxCard.tsx
+src/components/StatsView.tsx
+src/components/AddModal.tsx
+```
+
+## Getting Started
+
+### Installation
+
+1. Clone the repository:
+
+   git clone https://github.com/OralbaiSerzhan/1finance-app.git
+
+2. Navigate to the project directory:
+
+   cd 1finance-app
+
+3. Install dependencies:
+
+   npm install
+   npx expo install @react-native-async-storage/async-storage
+
+4. Start the application:
+
+   npx expo start
+
+## License
+
+This project is licensed under the MIT License.
